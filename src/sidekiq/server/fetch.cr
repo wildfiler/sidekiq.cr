@@ -81,10 +81,15 @@ module Sidekiq
 
       count = 0
       ctx.pool.redis do |conn|
-        conn.pipelined do
+        conn.pipelined do |pipeline|
           jobs_to_requeue.each do |queue, jobs|
-            conn.rpush("queue:#{queue}", jobs)
+            jobs.each do |job|
+              pipeline.rpush("queue:#{queue}", job)
+            end
             count += jobs.size
+          end
+          jobs_to_requeue.keys.each do |queue|
+            pipeline.sadd("queues", queue)
           end
         end
       end
